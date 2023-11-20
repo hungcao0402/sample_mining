@@ -1,0 +1,4 @@
+examples/data
+examples/logs
+wandb
+*.pth
