@@ -5,7 +5,7 @@ strategy_neg=('hard' 'least' 'moderate' 'random')
 
 for pos in "${strategy_pos[@]}"; do
     for neg in "${strategy_neg[@]}"; do
-        CUDA_VISIBLE_DEVICES=1 python examples/train.py -b 64 -a resnet50 -d market1501 --iters 200 --eps 0.45 --num-instances 16 --pooling-type gem --memorybank CMhybrid_v2 --epochs 60  --negative_sample "$neg"  --positive_sample "$pos" --logs-dir "examples/logs/market1501/{$pos}_{$neg}"
+        CUDA_VISIBLE_DEVICES=0,1,2,3,4 python examples/train.py -b 64 -a resnet50 -d market1501 --iters 200 --eps 0.45 --num-instances 16 --pooling-type gem --memorybank CMhybrid_v2 --epochs 60  --negative_sample "$neg"  --positive_sample "$pos" --logs-dir "examples/logs/market1501/{$pos}_{$neg}"
     done
 done
 
