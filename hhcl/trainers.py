@@ -31,7 +31,7 @@ class Trainer(object):
             loss = 0
             # forward
             f_out = self._forward(inputs)
-            loss += self.memory(f_out, labels)
+            loss += self.memory(f_out, labels, epoch)
 
             optimizer.zero_grad()
             loss.backward()

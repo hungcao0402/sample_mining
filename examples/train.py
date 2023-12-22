@@ -126,7 +126,7 @@ def main_worker(args):
     run = wandb.init(
         # set the wandb project where this run will be logged
         project="KLTN_"+args.dataset,
-        name=args.positive_sample + '_'+ args.negative_sample,
+        name='multi strategy: easy -> hard',
         
         # track hyperparameters and run metadata
         config={
@@ -135,7 +135,9 @@ def main_worker(args):
             "dataset": args.dataset,
             "batch-size": args.batch_size,
             "arch": args.arch,
-            "args.pooling_type": args.pooling_type
+            "args.pooling_type": args.pooling_type,
+            'positive_sample': args.positive_sample,
+            'negative_sample': args.negative_sample
         }
     )
 
@@ -186,7 +188,7 @@ def main_worker(args):
             # select & cluster images as training set of this epochs
             pseudo_labels = cluster.fit_predict(rerank_dist)
             num_cluster = len(set(pseudo_labels)) - (1 if -1 in pseudo_labels else 0)
-
+        print('select & cluster images as training set of this epochs')
         # generate new dataset and calculate cluster centers
         @torch.no_grad()
         def generate_cluster_features(labels, features):

@@ -247,7 +247,7 @@ class ClusterMemory(nn.Module, ABC):
         else:
             raise TypeError('Cluster Memory {} is invalid!'.format(self.cm_type))
 
-    def forward(self, inputs, targets):
+    def forward(self, inputs, targets, epoch):
         if self.cm_type in ['CM', 'CMhard']:
             outputs = ClusterMemory.__CMfactory[self.cm_type](inputs, targets, self.features, self.momentum)
             outputs /= self.temp
@@ -275,31 +275,36 @@ class ClusterMemory(nn.Module, ABC):
             # neg = torch.max(out, dim=0)[0]  
             # pos = torch.min(out, dim=0)[0]  #(64,115)
             
-            if self.negative_sample == 'least':
-                neg = torch.max(out, dim=0)[0] 
-            elif self.negative_sample == 'random':
-                random_indices = torch.randint(low=0, high=8, size=(out.shape[1], out.shape[-1])) 
-                neg = out[random_indices, torch.arange(out.shape[1]).unsqueeze(1), torch.arange(out.shape[-1]).unsqueeze(0)]
-            elif self.negative_sample =='moderate':
-                median_index = out.size(0) // 2 # Get the median index
-                sorted_out, sorted_indices = torch.sort(out, dim=0) # Sort the tensor
-                neg = sorted_out[median_index]  # Select the candidate ranked in the median   
-            else: #hard
-                neg = torch.min(out, dim=0)[0]  
+            # if self.negative_sample == 'least':
+            #     neg = torch.max(out, dim=0)[0] 
+            # elif self.negative_sample == 'random':
+            #     random_indices = torch.randint(low=0, high=8, size=(out.shape[1], out.shape[-1])) 
+            #     neg = out[random_indices, torch.arange(out.shape[1]).unsqueeze(1), torch.arange(out.shape[-1]).unsqueeze(0)]
+            # elif self.negative_sample =='moderate':
+            #     median_index = out.size(0) // 2 # Get the median index
+            #     sorted_out, sorted_indices = torch.sort(out, dim=0) # Sort the tensor
+            #     neg = sorted_out[median_index]  # Select the candidate ranked in the median   
+            # else: #hard
+            #     neg = torch.min(out, dim=0)[0]  
 
-            if self.positive_sample == 'least':
-                pos = torch.max(out, dim=0)[0] 
-            elif self.positive_sample == 'random':
-                random_indices = torch.randint(low=0, high=8, size=(out.shape[1], out.shape[-1])) 
-                pos = out[random_indices, torch.arange(out.shape[1]).unsqueeze(1), torch.arange(out.shape[-1]).unsqueeze(0)]
-            elif self.positive_sample =='moderate':
-                print('moderate')
-                median_index = out.size(0) // 2 # Get the median index
-                sorted_out, sorted_indices = torch.sort(out, dim=0) # Sort the tensor
-                pos = sorted_out[median_index]  # Select the candidate ranked in the median
-            else: #hard
-                print('hard')
-                pos = torch.min(out, dim=0)[0] 
+            # if self.positive_sample == 'least':
+            #     pos = torch.max(out, dim=0)[0] 
+            # elif self.positive_sample == 'random':
+            #     random_indices = torch.randint(low=0, high=8, size=(out.shape[1], out.shape[-1])) 
+            #     pos = out[random_indices, torch.arange(out.shape[1]).unsqueeze(1), torch.arange(out.shape[-1]).unsqueeze(0)]
+            # elif self.positive_sample =='moderate':
+            #     median_index = out.size(0) // 2 # Get the median index
+            #     sorted_out, sorted_indices = torch.sort(out, dim=0) # Sort the tensor
+            #     pos = sorted_out[median_index]  # Select the candidate ranked in the median
+            # else: #hard
+            #     pos = torch.min(out, dim=0)[0] 
+
+            pos = torch.min(out, dim=0)[0]  #(64,115)
+            print('a')
+            if epoch < 30:
+                neg = torch.max(out, dim=0)[0] 
+            else:
+                neg = torch.min(out, dim=0)[0]  
 
             mask = torch.zeros_like(out_list[0]).scatter_(1, targets.unsqueeze(1), 1)   
             logits = mask * pos + (1-mask) * neg    
