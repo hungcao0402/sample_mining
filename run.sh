@@ -15,4 +15,4 @@
 #     done
 # done
 
-CUDA_VISIBLE_DEVICES=0,1,2,3 python examples/train.py -b 256 -a resnet50 -d market1501 --iters 200 --eps 0.45 --num-instances 16 --pooling-type avg --memorybank CMhybrid_v2 --epochs 60  --negative_sample hard  --positive_sample hard --logs-dir "examples/logs/market1501/t"
+CUDA_VISIBLE_DEVICES=4,5,6,7 python examples/train.py -b 256 -a resnet50 -d market1501 --iters 200 --eps 0.45 --num-instances 16 --pooling-type avg --memorybank CMhybrid --epochs 60  --negative_sample hard  --positive_sample hard --logs-dir "examples/logs/market1501/mulistrategy"

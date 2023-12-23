@@ -132,7 +132,7 @@ class CM_Hybrid_Least(autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_outputs):
-        inputs, targets = ctx.saved_tensors
+        inputs, targets, epoch = ctx.saved_tensors
         nums = len(ctx.features)//2
         grad_inputs = None
         if ctx.needs_input_grad[0]:
@@ -235,11 +235,11 @@ class ClusterMemory(nn.Module, ABC):
 
         if self.cm_type in ['CM', 'CMhard']:
             self.register_buffer('features', torch.zeros(num_samples, num_features))
-        elif self.cm_type=='CMhybrid' or self.cm_type=='CMhybrid_Least':
+        elif self.cm_type=='CMhybrid':
             self.hard_weight = hard_weight
             print('hard_weight: {}'.format(self.hard_weight))
             self.register_buffer('features', torch.zeros(2*num_samples, num_features))
-        elif self.cm_type=='CMhybrid_v2' :
+        elif self.cm_type=='CMhybrid_v2':
             self.hard_weight = hard_weight
             self.num_instances = num_instances
             self.register_buffer('features', torch.zeros((self.num_instances+1)*num_samples, num_features))
@@ -254,7 +254,7 @@ class ClusterMemory(nn.Module, ABC):
             return loss
 
         elif self.cm_type=='CMhybrid':
-            outputs = cm_hybrid(inputs, targets, self.features, self.momentum)
+            outputs = cm_hybrid(inputs, targets, self.features, self.momentum, epoch)
             outputs /= self.temp
             output_hard, output_mean = torch.chunk(outputs, 2, dim=1)
 
@@ -263,11 +263,11 @@ class ClusterMemory(nn.Module, ABC):
             loss = self.hard_weight * loss_output_hard + (1 - self.hard_weight) * loss_centroid 
             # loss = loss_output_hard + loss_centroid + loss_output_easy
 
-            self.run.log({'output_hard_loss': loss_output_hard,'centroid_loss': loss_centroid, 'total_loss': loss})
+            # self.run.log({'output_hard_loss': loss_output_hard,'centroid_loss': loss_centroid, 'total_loss': loss})
             
             return loss
         elif self.cm_type=='CMhybrid_Least':
-            outputs = cm_hybrid_least(inputs, targets, self.features, self.momentum)
+            outputs = cm_hybrid_least(inputs, targets, self.features, self.momentum, epoch)
             outputs /= self.temp
             output_hard, output_mean = torch.chunk(outputs, 2, dim=1)
 
@@ -276,7 +276,7 @@ class ClusterMemory(nn.Module, ABC):
             loss = self.hard_weight * loss_output_hard + (1 - self.hard_weight) * loss_centroid 
             # loss = loss_output_hard + loss_centroid + loss_output_easy
 
-            self.run.log({'output_hard_loss': loss_output_hard,'centroid_loss': loss_centroid, 'total_loss': loss})
+            # self.run.log({'output_hard_loss': loss_output_hard,'centroid_loss': loss_centroid, 'total_loss': loss})
             
             return loss
 
@@ -285,9 +285,38 @@ class ClusterMemory(nn.Module, ABC):
             outputs = cm_hybrid_v2(inputs, targets, self.features, self.momentum, self.num_instances) #64,1035 | 1035 = 920 + 115, 920 = 115*8
             out_list = torch.chunk(outputs, self.num_instances+1, dim=1)    #64,1035 -> [(64,115),...]
             out = torch.stack(out_list[1:], dim=0)  
- 
+            # neg = torch.max(out, dim=0)[0]  
+            # pos = torch.min(out, dim=0)[0]  #(64,115)
+            
+            # if self.negative_sample == 'least':
+            #     neg = torch.max(out, dim=0)[0] 
+            # elif self.negative_sample == 'random':
+            #     random_indices = torch.randint(low=0, high=8, size=(out.shape[1], out.shape[-1])) 
+            #     neg = out[random_indices, torch.arange(out.shape[1]).unsqueeze(1), torch.arange(out.shape[-1]).unsqueeze(0)]
+            # elif self.negative_sample =='moderate':
+            #     median_index = out.size(0) // 2 # Get the median index
+            #     sorted_out, sorted_indices = torch.sort(out, dim=0) # Sort the tensor
+            #     neg = sorted_out[median_index]  # Select the candidate ranked in the median   
+            # else: #hard
+            #     neg = torch.min(out, dim=0)[0]  
+
+            # if self.positive_sample == 'least':
+            #     pos = torch.max(out, dim=0)[0] 
+            # elif self.positive_sample == 'random':
+            #     random_indices = torch.randint(low=0, high=8, size=(out.shape[1], out.shape[-1])) 
+            #     pos = out[random_indices, torch.arange(out.shape[1]).unsqueeze(1), torch.arange(out.shape[-1]).unsqueeze(0)]
+            # elif self.positive_sample =='moderate':
+            #     median_index = out.size(0) // 2 # Get the median index
+            #     sorted_out, sorted_indices = torch.sort(out, dim=0) # Sort the tensor
+            #     pos = sorted_out[median_index]  # Select the candidate ranked in the median
+            # else: #hard
+            #     pos = torch.min(out, dim=0)[0] 
+
             pos = torch.min(out, dim=0)[0]  #(64,115)
-            neg = torch.max(out, dim=0)[0] 
+            if epoch < 30:
+                neg = torch.max(out, dim=0)[0] 
+            else:
+                neg = torch.min(out, dim=0)[0]  
 
             mask = torch.zeros_like(out_list[0]).scatter_(1, targets.unsqueeze(1), 1)   
             logits = mask * pos + (1-mask) * neg    
@@ -299,7 +328,7 @@ class ClusterMemory(nn.Module, ABC):
 
 
             loss = self.hard_weight * loss_instance + (1 - self.hard_weight) * loss_centroid
-            self.run.log({'output_hard_loss': loss_instance,'centroid_loss': loss_centroid, 'total_loss': loss})        
+            # self.run.log({'output_hard_loss': loss_instance,'centroid_loss': loss_centroid, 'total_loss': loss})        
 
             return loss
 

@@ -126,7 +126,7 @@ def main_worker(args):
     run = wandb.init(
         # set the wandb project where this run will be logged
         project="KLTN_"+args.dataset,
-        name='multi strategy: easy -> hard',
+        name='multi strategy multi centroid: easy -> hard',
         
         # track hyperparameters and run metadata
         config={
@@ -224,9 +224,15 @@ def main_worker(args):
         del cluster_loader, features
 
         # Create memory bank
-        memory = ClusterMemory(args.negative_sample, args.positive_sample, model.module.num_features, run, num_cluster, temp=args.temp,
-                                momentum=args.momentum, mode=args.memorybank, smooth=args.smooth,
-                                num_instances=args.num_instances).cuda()
+        if epoch <30:
+            memory = ClusterMemory(args.negative_sample, args.positive_sample, model.module.num_features, run, num_cluster, temp=args.temp,
+                                    momentum=args.momentum, mode=args.memorybank, smooth=args.smooth,
+                                    num_instances=args.num_instances).cuda()
+        else:
+            memory = ClusterMemory(args.negative_sample, args.positive_sample, model.module.num_features, run, num_cluster, temp=args.temp,
+                                    momentum=args.momentum, mode='CMhybrid_Least', smooth=args.smooth,
+                                    num_instances=args.num_instances).cuda()
+
         if args.memorybank=='CMhybrid':
             memory.features = F.normalize(cluster_features.repeat(2, 1), dim=1).cuda()
         elif args.memorybank=='CMhybrid_v2':
